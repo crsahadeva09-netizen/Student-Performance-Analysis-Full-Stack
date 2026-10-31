@@ -147,7 +147,9 @@ Developed collaboratively as a full-stack academic software project.
 
 ## License
 
-No license has currently been assigned. All rights are reserved unless a license is added to this repository.
+No license has been assigned to this project.
+
+All rights reserved. No permission is granted to use, copy, modify, or distribute this code without prior authorization from the copyright holders.
 
 ---
 
