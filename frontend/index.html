@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Performance Analysis System</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+</head>
+<body>
+    <div id="loginPage" class="login-page">
+        <form id="loginForm" class="login-card">
+            <div class="brand-mark">SP</div>
+            <p class="eyebrow">ACADEMIC ANALYTICS</p>
+            <h1>Welcome back</h1>
+            <p class="muted">Sign in to view student performance.</p>
+
+            <label for="username">Username</label>
+            <input id="username" name="username" autocomplete="username" required>
+
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password"
+                   autocomplete="current-password" required>
+
+            <button class="primary-button" type="submit">Sign in</button>
+            <p id="loginMessage" class="message" role="status"></p>
+        </form>
+    </div>
+
+    <div id="appPage" class="app-layout hidden">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-mark">SP</div>
+                <div>
+                    <strong>Student Analytics</strong>
+                    <small>Performance system</small>
+                </div>
+            </div>
+
+            <p class="nav-heading">WORKSPACE</p>
+            <button class="nav-item active" data-view="overview">▦ Overview</button>
+            <button class="nav-item" data-view="directory">♙ Students</button>
+            <button class="nav-item" data-view="attendance">▣ Attendance</button>
+            <button class="nav-item" data-view="students">▤ Student performance</button>
+            <button class="nav-item" data-view="marks">✎ Marks entry</button>
+            <button class="nav-item" data-view="analytics">▥ Analytics</button>
+
+            <div class="sidebar-bottom">
+                <div class="user-card">
+                    <div class="avatar">A</div>
+                    <div>
+                        <strong id="signedInUser">Administrator</strong>
+                        <small>Signed in</small>
+                    </div>
+                </div>
+                <button id="logoutButton" class="logout-button">↪ Sign out</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div>
+                    <p class="eyebrow">ACADEMIC OVERVIEW</p>
+                    <h1 id="pageTitle">Performance dashboard</h1>
+                    <p class="muted">Review academic outcomes and identify students who need support.</p>
+                </div>
+                <button id="refreshButton" class="secondary-button">↻ Refresh data</button>
+            </header>
+
+            <section class="toolbar">
+                <div class="field">
+                    <label for="overviewBranch">Branch</label>
+                    <select id="overviewBranch">
+                        <option value="">Overall — All branches</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="subjectId">Subject</label>
+                    <select id="subjectId">
+                        <option value="">Overall — All branches and subjects</option>
+                    </select>
+                </div>
+                <button id="loadSubjectButton" class="primary-button">Load analytics</button>
+                <p id="dashboardMessage" class="message" role="status"></p>
+            </section>
+
+            <section id="overviewView">
+                <div class="section-heading">
+                    <div>
+                        <h2>Class overview</h2>
+                        <p class="muted">Statistics are loaded from your Flask API.</p>
+                    </div>
+                    <span id="subjectLabel" class="subject-label">Overall — All branches and subjects</span>
+                </div>
+
+                <div class="stats-grid">
+                    <article class="stat-card">
+                        <span class="stat-label">Total students</span>
+                        <strong id="totalStudents" class="stat-value">—</strong>
+                        <span class="stat-foot">Students in selected scope</span>
+                    </article>
+                    <article class="stat-card">
+                        <span class="stat-label">Class average</span>
+                        <strong id="classAverage" class="stat-value">—</strong>
+                        <span class="stat-foot">Calculated from current marks</span>
+                    </article>
+                    <article class="stat-card">
+                        <span class="stat-label">Pass percentage</span>
+                        <strong id="passPercentage" class="stat-value">—</strong>
+                        <span class="stat-foot">Passed students / total students</span>
+                    </article>
+                    <article class="stat-card">
+                        <span class="stat-label">Need attention</span>
+                        <strong id="supportCount" class="stat-value">—</strong>
+                        <span class="stat-foot">Failed or incomplete records</span>
+                    </article>
+                </div>
+
+                <div class="stats-grid compact-stats">
+                    <article class="stat-card mini-stat">
+                        <span class="stat-label">Passed</span>
+                        <strong id="passedStudents" class="stat-value success-text">—</strong>
+                    </article>
+                    <article class="stat-card mini-stat">
+                        <span class="stat-label">Failed</span>
+                        <strong id="failedStudents" class="stat-value danger-text">—</strong>
+                    </article>
+                    <article class="stat-card mini-stat">
+                        <span class="stat-label">Incomplete</span>
+                        <strong id="incompleteStudents" class="stat-value warning-text">—</strong>
+                    </article>
+                </div>
+
+                <section class="panel pie-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Pass vs Fail distribution</h2>
+                            <p class="muted">Missing midterms count as 0; skipping Internals or Final Exam results in Fail.</p>
+                        </div>
+                    </div>
+                    <div class="pie-layout">
+                        <div id="overviewPieChart" class="pie-chart" aria-label="Pass vs Fail pie chart">
+                            <div class="pie-center">
+                                <strong id="pieCenterPass">—</strong>
+                                <span>Pass rate</span>
+                            </div>
+                        </div>
+                        <div class="pie-legend">
+                            <div class="legend-item">
+                                <span class="legend-swatch pass"></span>
+                                <div>
+                                    <strong>Passed</strong>
+                                    <p id="pieLegendPass" class="muted">0 students (0.00%)</p>
+                                </div>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-swatch fail"></span>
+                                <div>
+                                    <strong>Failed</strong>
+                                    <p id="pieLegendFail" class="muted">0 students (0.00%)</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="content-grid">
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Top performers</h2>
+                                <p class="muted">Students passing all subjects in selected scope</p>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr><th>Rank</th><th>Student</th><th>Roll number</th><th>Total / Avg</th><th>Result</th></tr>
+                                </thead>
+                                <tbody id="topPerformersBody">
+                                    <tr><td colspan="5" class="empty-cell">Loading results…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Students needing support</h2>
+                                <p class="muted">Students who failed or skipped Internals / Final Exam</p>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr><th>Student</th><th>Roll number</th><th>Reason</th><th>Status</th></tr>
+                                </thead>
+                                <tbody id="supportBody">
+                                    <tr><td colspan="4" class="empty-cell">No data loaded.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section id="directoryView" class="hidden">
+                <section class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Students directory</h2>
+                            <p class="muted">Filtered by the Branch selected in the top toolbar, plus semester and search below.</p>
+                        </div>
+                        <div class="directory-actions-vertical">
+                            <button id="toggleAddStudentBtn" type="button" class="primary-button">+ Add student</button>
+                            <button id="toggleDeleteStudentBtn" type="button" class="secondary-button danger-btn">🗑 Delete student</button>
+                        </div>
+                    </div>
+
+                    <form id="addStudentForm" class="add-student-form hidden">
+                        <div class="field">
+                            <label for="newStudentBranch">Branch</label>
+                            <select id="newStudentBranch" required>
+                                <option value="">Select branch</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="newStudentName">Student name</label>
+                            <input id="newStudentName" type="text" placeholder="Enter student name" required>
+                        </div>
+                        <div class="field">
+                            <label for="newStudentSemester">Semester</label>
+                            <select id="newStudentSemester">
+                                <option value="1">Semester 1</option>
+                                <option value="2">Semester 2</option>
+                                <option value="3" selected>Semester 3</option>
+                                <option value="4">Semester 4</option>
+                                <option value="5">Semester 5</option>
+                                <option value="6">Semester 6</option>
+                                <option value="7">Semester 7</option>
+                                <option value="8">Semester 8</option>
+                            </select>
+                        </div>
+                        <div class="add-student-actions">
+                            <button id="saveNewStudentBtn" type="submit" class="primary-button">Save student</button>
+                            <button id="cancelAddStudentBtn" type="button" class="secondary-button">Cancel</button>
+                        </div>
+                    </form>
+
+                    <form id="deleteStudentForm" class="add-student-form hidden">
+                        <div class="field" style="grid-column: span 2;">
+                            <label for="deleteStudentSelect">Select student to delete (filtered by Branch)</label>
+                            <select id="deleteStudentSelect" required>
+                                <option value="">Select student to delete</option>
+                            </select>
+                        </div>
+                        <div class="add-student-actions" style="grid-column: span 2;">
+                            <button id="confirmDeleteStudentBtn" type="submit" class="primary-button danger-btn">Delete selected student</button>
+                            <button id="cancelDeleteStudentBtn" type="button" class="secondary-button">Cancel</button>
+                        </div>
+                    </form>
+
+                    <div class="filter-grid two-col-filters">
+                        <div class="field">
+                            <label for="directorySemester">Semester</label>
+                            <select id="directorySemester"><option value="">All semesters</option></select>
+                        </div>
+                        <div class="field">
+                            <label for="directorySearch">Search</label>
+                            <input id="directorySearch" placeholder="Student ID, roll number, or name">
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Roll number</th>
+                                    <th>Student name</th>
+                                    <th>Branch</th>
+                                    <th>Semester</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="directoryBody">
+                                <tr><td colspan="6" class="empty-cell">Loading students…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p id="directoryMessage" class="message" role="status"></p>
+                </section>
+            </section>
+
+            <section id="attendanceView" class="hidden">
+                <div class="filter-grid attendance-filters four-col-filters">
+                    <div class="field">
+                        <label for="attendanceSemester">Semester</label>
+                        <select id="attendanceSemester"><option value="">All semesters</option></select>
+                    </div>
+                    <div class="field">
+                        <label for="attendanceStatus">Status</label>
+                        <select id="attendanceStatus">
+                            <option value="">All statuses</option>
+                            <option value="Active">Active (&gt;75%)</option>
+                            <option value="Warning">Warning (65–75%)</option>
+                            <option value="Inactive">Inactive (&lt;65%)</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="attendanceSearch">Search student</label>
+                        <input id="attendanceSearch" placeholder="ID, roll number, or name">
+                    </div>
+                    <div class="attendance-toolbar-actions">
+                        <button id="attendanceRefresh" type="button" class="secondary-button">Apply filters</button>
+                        <button id="toggleAddAttendanceBtn" type="button" class="primary-button">+ Add / Update attendance</button>
+                    </div>
+                </div>
+
+                <section id="attendanceFormPanel" class="panel hidden" style="margin-bottom: 20px;">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Add / Update Subject-wise Attendance</h2>
+                            <p class="muted">All subjects for the selected student appear below. Enter Periods Attended and Total Periods beside each subject — the percentage calculates and saves automatically.</p>
+                        </div>
+                        <button id="closeAttendanceFormBtn" type="button" class="secondary-button">✕ Close</button>
+                    </div>
+                    <form id="attendanceRecordForm" style="padding: 0 20px 20px;">
+                        <div class="field" style="max-width: 440px; margin-bottom: 18px;">
+                            <label for="attStudentSelect">Select student</label>
+                            <select id="attStudentSelect" required>
+                                <option value="">Select student</option>
+                            </select>
+                        </div>
+
+                        <div id="attSubjectsInputsContainer" class="subject-attendance-inputs">
+                            <p class="muted">Select a student above to load all their subjects.</p>
+                        </div>
+
+                        <div class="add-student-actions" style="margin-top: 16px;">
+                            <button id="saveAttendanceBtn" type="submit" class="primary-button">Save all subjects</button>
+                            <button id="cancelAttendanceBtn" type="button" class="secondary-button">Close</button>
+                        </div>
+                    </form>
+                    <p id="attRecordMessage" class="message" style="padding: 0 20px 16px;"></p>
+                </section>
+
+                <div class="stats-grid">
+                    <article class="stat-card"><span class="stat-label">Students</span><strong id="attendanceTotal" class="stat-value">—</strong></article>
+                    <article class="stat-card"><span class="stat-label">Active (&gt;75%)</span><strong id="attendanceActive" class="stat-value success-text">—</strong></article>
+                    <article class="stat-card"><span class="stat-label">Warning (65–75%)</span><strong id="attendanceWarning" class="stat-value warning-text">—</strong></article>
+                    <article class="stat-card"><span class="stat-label">Inactive (&lt;65%)</span><strong id="attendanceInactive" class="stat-value danger-text">—</strong></article>
+                </div>
+
+                <section class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Student attendance</h2>
+                            <p class="muted">Filtered by the Branch and Subject selected in the top toolbar. Click Edit on any student to open the Add / Update window.</p>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Roll number</th>
+                                    <th>Name</th>
+                                    <th>Branch</th>
+                                    <th>Semester</th>
+                                    <th>Periods (Attended / Total)</th>
+                                    <th>Attendance %</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceBody">
+                                <tr><td colspan="9" class="empty-cell">Loading attendance…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p id="attendanceMessage" class="message" role="status"></p>
+                </section>
+
+                <div class="content-grid chart-grid">
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Attendance distribution</h2>
+                                <p class="muted">Active, warning and inactive students</p>
+                            </div>
+                        </div>
+                        <div id="attendanceDistribution" class="chart-placeholder">Charts appear when attendance data is available.</div>
+                    </section>
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Attendance by student</h2>
+                                <p class="muted">Percentage of sessions attended</p>
+                            </div>
+                        </div>
+                        <div id="attendanceBars" class="chart-placeholder">No attendance data loaded.</div>
+                    </section>
+                </div>
+            </section>
+
+            <section id="analyticsView" class="hidden">
+                <section class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Academic analytics</h2>
+                            <p class="muted">Performance charts and detailed pass/fail breakdown for the selected Branch and Subject.</p>
+                        </div>
+                        <button id="analyticsReload" class="secondary-button" type="button">Refresh analytics</button>
+                    </div>
+                    <div class="content-grid" style="padding: 0 20px 20px; margin-top: 0;">
+                        <div class="panel chart-panel">
+                            <div class="panel-heading"><h2>Result summary</h2></div>
+                            <div id="resultSummaryChart" class="chart-placeholder">Load analytics to view the result summary.</div>
+                        </div>
+                        <div class="panel chart-panel">
+                            <div class="panel-heading"><h2>Student scores comparison</h2></div>
+                            <div id="topPerformersChart" class="chart-placeholder">Load analytics to view student scores.</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel" style="margin-top: 20px;">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Detailed pass / fail diagnostic</h2>
+                            <p class="muted">Exact reason why each student passed or failed in the selected scope (Passing requires recorded Internals &amp; Final Exam, Final Exam &ge; 40, and Total &ge; 40).</p>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Roll number</th>
+                                    <th>Total / Avg</th>
+                                    <th>Result</th>
+                                    <th>Why they passed or failed</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analyticsDiagnosticBody">
+                                <tr><td colspan="5" class="empty-cell">Loading diagnostic breakdown…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
+
+            <section id="studentsView" class="hidden">
+                <section class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Individual student performance &amp; attendance</h2>
+                            <p class="muted">Select a student (filtered by the Branch in the top bar) to view their analytics across all subjects, subject-wise bar graph, and distinct subject attendance percentages below.</p>
+                        </div>
+                    </div>
+                    <div class="lookup-form" style="padding-bottom: 20px;">
+                        <div class="field" style="width: 360px;">
+                            <label for="allSubjectsStudentSelect">Select student</label>
+                            <select id="allSubjectsStudentSelect">
+                                <option value="">Loading students...</option>
+                            </select>
+                        </div>
+                        <button id="loadStudentAllSubjectsBtn" type="button" class="primary-button">View all-subject analytics</button>
+                    </div>
+
+                    <div id="studentAllSubjectsResult" class="student-result muted" style="margin: 0 20px 20px;">
+                        Select a student above to view their analytics across all subjects, subject-wise bar graph, and respective subject attendance percentages.
+                    </div>
+                </section>
+            </section>
+
+            <section id="marksView" class="hidden">
+                <section class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Record student marks</h2>
+                            <p class="muted">Students are filtered automatically by the Branch selected in the top bar.</p>
+                        </div>
+                    </div>
+
+                    <form id="marksForm" class="marks-form">
+                        <div class="field">
+                            <label for="marksStudent">Student</label>
+                            <select id="marksStudent" required>
+                                <option value="">Loading students...</option>
+                            </select>
+                        </div>
+
+                        <div class="field">
+                            <label for="marksAssessment">Assessment</label>
+                            <select id="marksAssessment" required>
+                                <option value="">Select a subject in the top bar first</option>
+                            </select>
+                        </div>
+
+                        <div class="field">
+                            <label for="marksObtained">Marks obtained</label>
+                            <input id="marksObtained" type="number" min="0"
+                                step="0.01" required placeholder="Enter marks">
+                            <small id="marksMaximum" class="muted">Maximum: —</small>
+                        </div>
+
+                        <div class="field">
+                            <label for="marksMode">Operation</label>
+                            <select id="marksMode">
+                                <option value="auto">Add or update automatically</option>
+                                <option value="add">Add new marks only</option>
+                                <option value="update">Update existing marks only</option>
+                            </select>
+                        </div>
+
+                        <button id="saveMarksButton" type="submit" class="primary-button">
+                            Save marks
+                        </button>
+                    </form>
+
+                    <p id="marksMessage" class="message" role="status"></p>
+                </section>
+
+                <section class="panel marks-table-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Existing marks</h2>
+                            <p class="muted">Select a student and a subject in the top bar to inspect recorded assessments.</p>
+                        </div>
+                        <button id="loadMarksButton" type="button" class="secondary-button">
+                            Load marks
+                        </button>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Assessment</th>
+                                    <th>Obtained</th>
+                                    <th>Maximum</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="existingMarksBody">
+                                <tr><td colspan="4" class="empty-cell">Select a student and load marks.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
+
+            <footer class="footer">
+                Student Performance Analysis System <span>·</span> Live API data
+            </footer>
+        </main>
+    </div>
+</body>
+</html>

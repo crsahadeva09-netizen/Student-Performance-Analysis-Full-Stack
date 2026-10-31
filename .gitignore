@@ -1,0 +1,22 @@
+﻿.env
+backend/.env
+**/.env
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+**/.pytest_cache/
+*.py[cod]
+backend.zip
+
+# Local editor settings
+.vscode/
+
+# Environment and generated files
+.env.*
+!.env.example
+
+# Build and test artifacts
+.coverage
+htmlcov/
