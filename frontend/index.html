@@ -3,17 +3,285 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Performance Analysis System</title>
+    <title>AstraMindNexus — Student Performance Analysis System</title>
     <link rel="stylesheet" href="style.css">
     <script src="script.js" defer></script>
 </head>
 <body>
-    <div id="loginPage" class="login-page">
+    <!-- ==========================================
+         1. OPENING LANDING PAGE (AstraMindNexus)
+         ========================================== -->
+    <div id="landingPage" class="landing-page">
+        <header class="landing-navbar">
+            <div class="landing-nav-container">
+                <a href="#homeSection" class="landing-brand">
+                    <div class="brand-mark">AM</div>
+                    <div>
+                        <strong>AstraMindNexus</strong>
+                        <small>Next-Gen EdTech &amp; AI Solutions</small>
+                    </div>
+                </a>
+
+                <nav class="landing-nav-links" aria-label="Primary Navigation">
+                    <a href="#homeSection">Home</a>
+                    <a href="#aboutSection">About Us</a>
+                    <a href="#featuresSection">Features</a>
+                    <a href="#contactSection">Contact Us</a>
+                </nav>
+
+                <div class="landing-nav-actions">
+                    <button id="openLoginFromNavBtn" type="button" class="primary-button">
+                        Portal Sign In →
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- HOME / HERO SECTION -->
+        <section id="homeSection" class="landing-hero">
+            <div class="landing-container hero-grid">
+                <div class="hero-copy">
+                    <span class="hero-badge">ASTRAMINDNEXUS · ACADEMIC INTELLIGENCE</span>
+                    <h1>Empowering Institutions with Real-Time Student Performance Analytics</h1>
+                    <p class="hero-lead">
+                        Welcome to <strong>AstraMindNexus</strong>. Our flagship Student Performance Analysis System unifies multi-branch academic tracking, automated grade calculation, diagnostic failure detection, and subject-wise attendance analytics into a single intelligent platform.
+                    </p>
+                    <div class="hero-buttons">
+                        <button id="openLoginFromHeroBtn" type="button" class="primary-button hero-cta-btn">
+                            Launch Analytics Portal →
+                        </button>
+                        <a href="#featuresSection" class="secondary-button hero-secondary-btn">
+                            Explore Features
+                        </a>
+                    </div>
+                    <div class="hero-metrics">
+                        <div>
+                            <strong>1,800+</strong>
+                            <span>Active Student Records</span>
+                        </div>
+                        <div>
+                            <strong>9</strong>
+                            <span>Engineering Branches</span>
+                        </div>
+                        <div>
+                            <strong>45+</strong>
+                            <span>Subject Curriculums</span>
+                        </div>
+                        <div>
+                            <strong>100%</strong>
+                            <span>Real-Time Accuracy</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hero-preview-card">
+                    <div class="preview-header">
+                        <span class="dot red"></span>
+                        <span class="dot amber"></span>
+                        <span class="dot green"></span>
+                        <small>AstraMindNexus · Live Academic Engine</small>
+                    </div>
+                    <div class="preview-body">
+                        <div class="preview-stat-row">
+                            <div class="preview-stat">
+                                <span>Pass Rate</span>
+                                <strong class="success-text">84.2%</strong>
+                            </div>
+                            <div class="preview-stat">
+                                <span>Class Avg</span>
+                                <strong>72.8 / 100</strong>
+                            </div>
+                            <div class="preview-stat">
+                                <span>Attendance</span>
+                                <strong class="primary-text">Active</strong>
+                            </div>
+                        </div>
+                        <div class="preview-bars">
+                            <div class="preview-bar-item">
+                                <span>CSE · DBMS</span>
+                                <div class="distribution-track"><span class="distribution-fill active" style="width: 88%"></span></div>
+                                <strong>88%</strong>
+                            </div>
+                            <div class="preview-bar-item">
+                                <span>CSE-AIML · AI/ML</span>
+                                <div class="distribution-track"><span class="distribution-fill active" style="width: 82%"></span></div>
+                                <strong>82%</strong>
+                            </div>
+                            <div class="preview-bar-item">
+                                <span>CSE-DS · Data Science</span>
+                                <div class="distribution-track"><span class="distribution-fill active" style="width: 79%"></span></div>
+                                <strong>79%</strong>
+                            </div>
+                            <div class="preview-bar-item">
+                                <span>ECE · Signals &amp; Systems</span>
+                                <div class="distribution-track"><span class="distribution-fill warning" style="width: 74%"></span></div>
+                                <strong>74%</strong>
+                            </div>
+                        </div>
+                        <p class="preview-caption">
+                            Automated evaluation formula: <code>T = 0.48H + 0.12L + I + F/2</code> with instant mandatory-exam compliance checks.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ABOUT US SECTION -->
+        <section id="aboutSection" class="landing-section about-section">
+            <div class="landing-container">
+                <div class="landing-section-header">
+                    <p class="eyebrow">ABOUT US</p>
+                    <h2>About AstraMindNexus</h2>
+                    <p class="muted">Bridging the gap between raw academic data and actionable student mentorship.</p>
+                </div>
+
+                <div class="about-grid">
+                    <article class="about-card">
+                        <h3>Our Mission</h3>
+                        <p>
+                            At <strong>AstraMindNexus</strong>, we build high-reliability software systems that transform how universities and engineering colleges monitor academic progress. Instead of discovering struggling students after semester results are published, our platform identifies risk factors—such as missed internals, low midterm trajectories, or falling subject attendance—in real time.
+                        </p>
+                    </article>
+                    <article class="about-card">
+                        <h3>Why We Built This Platform</h3>
+                        <p>
+                            Traditional spreadsheets fail to enforce strict university evaluation rules across thousands of students and multiple branches. AstraMindNexus combines a relational MySQL architecture with a fast Python Flask analytics engine to guarantee data integrity, instant rank computation, and transparent pass/fail diagnostics.
+                        </p>
+                    </article>
+                    <article class="about-card">
+                        <h3>Built for Academic Excellence</h3>
+                        <p>
+                            Designed for faculty administrators, department heads, and academic coordinators across CSE, CSE-AIML, CSE-DS, CSE-AIDS, CSE-CS, ECE, EEE, CIVIL, and MECH departments to make data-driven decisions effortless.
+                        </p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- FEATURES SECTION -->
+        <section id="featuresSection" class="landing-section features-section">
+            <div class="landing-container">
+                <div class="landing-section-header">
+                    <p class="eyebrow">PLATFORM CAPABILITIES</p>
+                    <h2>Core Features of Our System</h2>
+                    <p class="muted">Everything your institution needs to manage students, assessments, attendance, and analytics.</p>
+                </div>
+
+                <div class="features-grid">
+                    <article class="feature-card">
+                        <div class="feature-icon">▦</div>
+                        <h3>Multi-Branch Class Overview</h3>
+                        <p>Filter performance across all 9 engineering branches or drill down into specific semester subjects with interactive Pass/Fail distribution charts.</p>
+                    </article>
+
+                    <article class="feature-card">
+                        <div class="feature-icon">▥</div>
+                        <h3>Automated Weighted Grading Engine</h3>
+                        <p>Automatically computes weighted totals from Midterm 1, Midterm 2, Internals, and Final Exams while enforcing mandatory exam attendance and minimum passing thresholds.</p>
+                    </article>
+
+                    <article class="feature-card">
+                        <div class="feature-icon">▣</div>
+                        <h3>Subject-Wise Period Attendance</h3>
+                        <p>Record attended and total periods for every subject with live auto-calculated percentages, detention warnings (&lt;65%), and instant database auto-saving.</p>
+                    </article>
+
+                    <article class="feature-card">
+                        <div class="feature-icon">▤</div>
+                        <h3>360° Student Performance Profile</h3>
+                        <p>Inspect any student's complete all-subject mark sheet, visual performance bar graphs, and subject-by-subject attendance status on a single screen.</p>
+                    </article>
+
+                    <article class="feature-card">
+                        <div class="feature-icon">✎</div>
+                        <h3>Validated Marks Entry &amp; Audit Safety</h3>
+                        <p>Add or update Midterm, Internal, and Final Exam scores with strict maximum-mark validation and relational foreign-key protection.</p>
+                    </article>
+
+                    <article class="feature-card">
+                        <div class="feature-icon">♙</div>
+                        <h3>Early-Warning Support Diagnostics</h3>
+                        <p>Automatically flags students who need academic support and explains the exact reason—whether due to skipped Internals, Final Exam &lt; 40, or overall total &lt; 40.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- CONTACT US SECTION -->
+        <section id="contactSection" class="landing-section contact-section">
+            <div class="landing-container">
+                <div class="contact-card">
+                    <div class="contact-info">
+                        <p class="eyebrow">CONTACT US</p>
+                        <h2>Get in Touch with AstraMindNexus</h2>
+                        <p class="muted">
+                            Have questions about deploying the Student Performance Analysis System, customizing branch curriculums, or technical support? Reach out to our team directly.
+                        </p>
+
+                        <div class="contact-details-list">
+                            <div class="contact-detail-item">
+                                <div class="contact-icon">✉</div>
+                                <div>
+                                    <span>Email Address</span>
+                                    <strong><a href="mailto:crsahadeva09@gmail.com">crsahadeva09@gmail.com</a></strong>
+                                </div>
+                            </div>
+
+                            <div class="contact-detail-item">
+                                <div class="contact-icon">☎</div>
+                                <div>
+                                    <span>Phone / WhatsApp</span>
+                                    <strong><a href="tel:+916309746117">+91 6309746117</a></strong>
+                                </div>
+                            </div>
+
+                            <div class="contact-detail-item">
+                                <div class="contact-icon">🏢</div>
+                                <div>
+                                    <span>Organization</span>
+                                    <strong>AstraMindNexus — Academic Analytics Division</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="contact-cta-box">
+                        <h3>Ready to Access the Dashboard?</h3>
+                        <p class="muted">Sign in with your administrator credentials to view live student analytics, manage attendance, and enter assessment marks.</p>
+                        <button id="openLoginFromContactBtn" type="button" class="primary-button" style="width: 100%; padding: 14px;">
+                            Sign In to Portal →
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="landing-footer">
+            <div class="landing-container landing-footer-inner">
+                <div>
+                    <strong>AstraMindNexus</strong> · Student Performance Analysis System
+                </div>
+                <div>
+                    Contact: <a href="mailto:crsahadeva09@gmail.com">crsahadeva09@gmail.com</a> · <a href="tel:+916309746117">+91 6309746117</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ==========================================
+         2. LOGIN PAGE
+         ========================================== -->
+    <div id="loginPage" class="login-page hidden">
         <form id="loginForm" class="login-card">
-            <div class="brand-mark">SP</div>
-            <p class="eyebrow">ACADEMIC ANALYTICS</p>
+            <div class="login-card-top">
+                <div class="brand-mark">AM</div>
+                <button id="backToLandingBtn" type="button" class="secondary-button back-landing-btn">
+                    ← Back to Home
+                </button>
+            </div>
+            <p class="eyebrow">ASTRAMINDNEXUS · ACADEMIC ANALYTICS</p>
             <h1>Welcome back</h1>
-            <p class="muted">Sign in to view student performance.</p>
+            <p class="muted">Sign in to view student performance and attendance analytics.</p>
 
             <label for="username">Username</label>
             <input id="username" name="username" autocomplete="username" required>
@@ -27,12 +295,15 @@
         </form>
     </div>
 
+    <!-- ==========================================
+         3. MAIN APPLICATION DASHBOARD
+         ========================================== -->
     <div id="appPage" class="app-layout hidden">
         <aside class="sidebar">
             <div class="sidebar-brand">
-                <div class="brand-mark">SP</div>
+                <div class="brand-mark">AM</div>
                 <div>
-                    <strong>Student Analytics</strong>
+                    <strong>AstraMindNexus</strong>
                     <small>Performance system</small>
                 </div>
             </div>
@@ -60,7 +331,7 @@
         <main class="main-content">
             <header class="topbar">
                 <div>
-                    <p class="eyebrow">ACADEMIC OVERVIEW</p>
+                    <p class="eyebrow">ASTRAMINDNEXUS · ACADEMIC OVERVIEW</p>
                     <h1 id="pageTitle">Performance dashboard</h1>
                     <p class="muted">Review academic outcomes and identify students who need support.</p>
                 </div>
@@ -293,6 +564,223 @@
             </section>
 
             <section id="attendanceView" class="hidden">
+                <!-- =========================================================
+                     1. DAILY ROLL-CALL ATTENDANCE ROSTER (MARK EVERYONE EVERYDAY)
+                     ========================================================= -->
+                <section class="panel" style="margin-bottom: 20px;">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>1. Daily Roll-Call Attendance (Mark Everyone Present / Absent)</h2>
+                            <p class="muted">Select any date (or click an exam date chip below), mark everyone Present or Absent with one click or individual toggles, and save to database.</p>
+                        </div>
+                        <div class="daily-header-actions">
+                            <button id="toggleExamScheduleBtn" type="button" class="secondary-button">📅 Branch Midterm &amp; Exam Dates</button>
+                            <button id="exportExcelReportBtn" type="button" class="primary-button">⬇ Export Excel Report (.xlsx)</button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Jump Chips for Midterm 1, Midterm 2, Internals, Final Exam Dates -->
+                    <div class="exam-date-chips-bar">
+                        <span class="chips-label">Quick Jump to Exam Dates:</span>
+                        <button type="button" class="exam-chip" data-date="2026-08-10">Midterm 1 · Day 1 (2026-08-10)</button>
+                        <button type="button" class="exam-chip" data-date="2026-08-11">Midterm 1 · Day 2 (2026-08-11)</button>
+                        <button type="button" class="exam-chip" data-date="2026-09-14">Midterm 2 · Day 1 (2026-09-14)</button>
+                        <button type="button" class="exam-chip" data-date="2026-10-05">Internals · Day 1 (2026-10-05)</button>
+                        <button type="button" class="exam-chip" data-date="2026-10-19">Final Exam · Day 1 (2026-10-19)</button>
+                    </div>
+
+                    <div class="daily-controls-bar">
+                        <div class="field" style="min-width: 170px;">
+                            <label for="dailyAttendanceDate">Attendance Date</label>
+                            <input id="dailyAttendanceDate" type="date" value="2026-08-10">
+                        </div>
+                        <div class="field" style="min-width: 220px;">
+                            <label for="dailyLeaveCategoryFilter">Filter by Medical / NSS / Sports</label>
+                            <select id="dailyLeaveCategoryFilter">
+                                <option value="">All Students (Full Roster)</option>
+                                <option value="ALL_LEAVES">All Special Leave Requests (NSS / Sports / Medical)</option>
+                                <option value="PENDING_LEAVES">Pending Approval Only (NSS / Sports / Medical)</option>
+                                <option value="Medical Leave">🏥 Medical Leave Only</option>
+                                <option value="NSS">🎖 NSS Only</option>
+                                <option value="Sports">🏅 Sports Club Only</option>
+                                <option value="APPROVED_LEAVES">✓ Approved (0.6/1 Credit) Only</option>
+                            </select>
+                        </div>
+                        <div class="field" style="min-width: 200px; flex: 1;">
+                            <label for="dailyRosterSearch">Search student</label>
+                            <input id="dailyRosterSearch" placeholder="Roll number or student name…">
+                        </div>
+                        <div class="daily-bulk-buttons">
+                            <button id="loadDailyRosterBtn" type="button" class="secondary-button">↻ Load Date</button>
+                            <button id="approveFilteredLeavesBtn" type="button" class="primary-button amber-cta-btn" title="Approve all filtered Medical Leave / NSS / Sports requests as Present with 0.6/1 (60%) credit">
+                                ★ Approve Filtered Leaves (0.6/1 · 60%)
+                            </button>
+                            <button id="markAllPresentBtn" type="button" class="secondary-button success-outline-btn">✓ Mark All Present (1/1)</button>
+                            <button id="markAllAbsentBtn" type="button" class="secondary-button danger-outline-btn">✕ Mark All Absent (0/1)</button>
+                            <button id="saveDailyRosterBtn" type="button" class="primary-button">💾 Save Daily Attendance</button>
+                        </div>
+                    </div>
+
+                    <!-- Exclusive Category Filter Pills for 1-Click Filtering & Exclusive Approval -->
+                    <div class="leave-filter-pills-bar">
+                        <span class="chips-label">Exclusive Category Filter:</span>
+                        <button type="button" class="leave-filter-pill active" data-leave-filter="">All Students</button>
+                        <button type="button" class="leave-filter-pill" data-leave-filter="Medical Leave">
+                            🏥 Medical Leave (<span id="countMedicalLeave">0</span>)
+                        </button>
+                        <button type="button" class="leave-filter-pill" data-leave-filter="NSS">
+                            🎖 NSS (<span id="countNSS">0</span>)
+                        </button>
+                        <button type="button" class="leave-filter-pill" data-leave-filter="Sports">
+                            🏅 Sports Club (<span id="countSports">0</span>)
+                        </button>
+                        <button type="button" class="leave-filter-pill" data-leave-filter="PENDING_LEAVES">
+                            ⏳ Pending Requests (<span id="countPendingLeaves">0</span>)
+                        </button>
+                        <button type="button" class="leave-filter-pill" data-leave-filter="APPROVED_LEAVES">
+                            ✓ Approved 0.6/1 (<span id="countApprovedLeaves">0</span>)
+                        </button>
+                    </div>
+
+                    <div id="dailyExamBanner" class="exam-day-banner hidden"></div>
+
+                    <div class="daily-summary-strip">
+                        <span>Total Shown: <strong id="dailyTotalCount">0</strong></span>
+                        <span class="success-text">Present (1.0): <strong id="dailyPresentCount">0</strong></span>
+                        <span class="amber-text">Approved Leave (0.6/1 · 60%): <strong id="dailyApprovedLeaveCount">0</strong></span>
+                        <span class="danger-text">Absent (0.0): <strong id="dailyAbsentCount">0</strong></span>
+                        <span class="warning-text">Pending Leave Requests: <strong id="dailyPendingLeaveCount">0</strong></span>
+                        <span id="dailyRosterMessage" class="message" style="margin-left: auto;"></span>
+                    </div>
+
+                    <div class="table-wrap" style="max-height: 440px; overflow-y: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Roll Number</th>
+                                    <th>Student Name</th>
+                                    <th>Branch</th>
+                                    <th>Scheduled Exam</th>
+                                    <th>Special Leave / Club (NSS · Sports · Medical)</th>
+                                    <th>Credit Considered</th>
+                                    <th>Daily Status &amp; Pop-Up Approval</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dailyRosterBody">
+                                <tr><td colspan="7" class="empty-cell">Select a date to load the daily student roll-call roster…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- =========================================================
+                     2. BRANCH MIDTERM & EXAM DATES TIMETABLE (COLLAPSIBLE)
+                     ========================================================= -->
+                <section id="examSchedulePanel" class="panel hidden" style="margin-bottom: 20px;">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Branch-Wise Midterm &amp; Examination Dates</h2>
+                            <p class="muted">Specific dates for Midterm 1, Midterm 2, Internals, and Final Exam for each branch. Change any date to save automatically or click "Open Roll Call" to mark attendance for that exam day.</p>
+                        </div>
+                        <button id="closeExamScheduleBtn" type="button" class="secondary-button">✕ Close</button>
+                    </div>
+                    <div class="filter-grid two-col-filters" style="padding-bottom: 12px;">
+                        <div class="field">
+                            <label for="scheduleAssessmentFilter">Filter by Assessment Type</label>
+                            <select id="scheduleAssessmentFilter">
+                                <option value="">All Assessments (Midterm 1, Midterm 2, Internals, Final Exam)</option>
+                                <option value="Midterm 1">Midterm 1</option>
+                                <option value="Midterm 2">Midterm 2</option>
+                                <option value="Internals">Internals</option>
+                                <option value="Final Exam">Final Exam</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>&nbsp;</label>
+                            <p id="examScheduleMessage" class="message" style="margin: 8px 0 0;"></p>
+                        </div>
+                    </div>
+                    <div class="table-wrap" style="max-height: 360px; overflow-y: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Branch</th>
+                                    <th>Sem</th>
+                                    <th>Subject Code</th>
+                                    <th>Subject Name</th>
+                                    <th>Assessment</th>
+                                    <th>Max Marks</th>
+                                    <th>Specific Exam Date</th>
+                                    <th>Roll Call Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="examScheduleBody">
+                                <tr><td colspan="8" class="empty-cell">Loading branch exam dates…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- =========================================================
+                     3. UNATTEMPTED EXAM vs. DAILY ATTENDANCE VERIFICATION
+                     ========================================================= -->
+                <section class="panel" style="margin-bottom: 20px;">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>2. Unattempted Exam Absence Verification</h2>
+                            <p class="muted">Automatically checks every student who did not attempt a Midterm, Internal, or Final Exam and verifies whether they were marked ABSENT on that specific exam date.</p>
+                        </div>
+                        <div class="field" style="min-width: 220px;">
+                            <select id="verifyAssessmentFilter">
+                                <option value="">All Unattempted Exams</option>
+                                <option value="Midterm 1">Midterm 1 Only</option>
+                                <option value="Midterm 2">Midterm 2 Only</option>
+                                <option value="Internals">Internals Only</option>
+                                <option value="Final Exam">Final Exam Only</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid compact-stats" style="padding: 0 20px; margin-bottom: 14px;">
+                        <article class="stat-card mini-stat">
+                            <span class="stat-label">Unattempted Exam Cases</span>
+                            <strong id="verifyTotalCount" class="stat-value">—</strong>
+                        </article>
+                        <article class="stat-card mini-stat">
+                            <span class="stat-label">Verified Absent on Exam Day</span>
+                            <strong id="verifyAbsentCount" class="stat-value success-text">—</strong>
+                        </article>
+                        <article class="stat-card mini-stat">
+                            <span class="stat-label">Anomaly (Present on Campus, Skipped Exam)</span>
+                            <strong id="verifyAnomalyCount" class="stat-value danger-text">—</strong>
+                        </article>
+                    </div>
+
+                    <div class="table-wrap" style="max-height: 360px; overflow-y: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Roll Number</th>
+                                    <th>Student Name</th>
+                                    <th>Branch</th>
+                                    <th>Subject</th>
+                                    <th>Assessment</th>
+                                    <th>Specific Exam Date</th>
+                                    <th>Attendance on Exam Date</th>
+                                    <th>Verification Verdict</th>
+                                    <th>Quick Fix</th>
+                                </tr>
+                            </thead>
+                            <tbody id="examVerificationBody">
+                                <tr><td colspan="9" class="empty-cell">Loading exam absence verification…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- =========================================================
+                     4. SUBJECT-WISE PERIODS CUMULATIVE ATTENDANCE
+                     ========================================================= -->
                 <div class="filter-grid attendance-filters four-col-filters">
                     <div class="field">
                         <label for="attendanceSemester">Semester</label>
@@ -313,7 +801,7 @@
                     </div>
                     <div class="attendance-toolbar-actions">
                         <button id="attendanceRefresh" type="button" class="secondary-button">Apply filters</button>
-                        <button id="toggleAddAttendanceBtn" type="button" class="primary-button">+ Add / Update attendance</button>
+                        <button id="toggleAddAttendanceBtn" type="button" class="primary-button">+ Add / Update Subject Periods</button>
                     </div>
                 </div>
 
@@ -355,8 +843,8 @@
                 <section class="panel">
                     <div class="panel-heading">
                         <div>
-                            <h2>Student attendance</h2>
-                            <p class="muted">Filtered by the Branch and Subject selected in the top toolbar. Click Edit on any student to open the Add / Update window.</p>
+                            <h2>3. Cumulative Subject-Wise Period Attendance</h2>
+                            <p class="muted">Filtered by the Branch and Subject selected in the top toolbar. Click Edit on any student to open the Add / Update Subject Periods window.</p>
                         </div>
                     </div>
                     <div class="table-wrap">
@@ -553,9 +1041,80 @@
             </section>
 
             <footer class="footer">
-                Student Performance Analysis System <span>·</span> Live API data
+                AstraMindNexus · Student Performance Analysis System <span>·</span> Live API data
             </footer>
         </main>
     </div>
+
+    <!-- ==========================================================
+         POP-UP MODAL BOX FOR NSS / SPORTS / MEDICAL LEAVE APPROVAL (0.6/1 = 60%)
+         ========================================================== -->
+    <div id="leaveApprovalModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="leaveModalTitle">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <p class="eyebrow">SPECIAL ATTENDANCE APPROVAL · 0.6 / 1 CREDIT</p>
+                    <h2 id="leaveModalTitle">Approve NSS / Sports / Medical Leave</h2>
+                </div>
+                <button id="closeLeaveModalBtn" type="button" class="secondary-button">✕</button>
+            </div>
+
+            <form id="leaveApprovalForm" class="modal-body">
+                <input id="modalStudentId" type="hidden">
+
+                <div class="modal-student-banner">
+                    <div>
+                        <span class="muted" style="font-size: 11px;">STUDENT</span>
+                        <strong id="modalStudentName" style="display: block; font-size: 16px;">—</strong>
+                    </div>
+                    <div>
+                        <span class="muted" style="font-size: 11px;">ROLL NO &amp; BRANCH</span>
+                        <strong id="modalStudentMeta" style="display: block; font-size: 14px;">—</strong>
+                    </div>
+                    <div>
+                        <span class="muted" style="font-size: 11px;">DATE</span>
+                        <strong id="modalAttendanceDateLabel" style="display: block; font-size: 14px;">—</strong>
+                    </div>
+                </div>
+
+                <div class="field" style="margin-bottom: 16px;">
+                    <label for="modalLeaveCategory">Select Category (Medical Leave / NSS / Sports Club)</label>
+                    <select id="modalLeaveCategory" required>
+                        <option value="Medical Leave">🏥 Medical Leave (60% Attendance Credit · 0.6/1)</option>
+                        <option value="NSS">🎖 NSS — National Service Scheme (60% Attendance Credit · 0.6/1)</option>
+                        <option value="Sports">🏅 Sports Club / University Representation (60% Attendance Credit · 0.6/1)</option>
+                    </select>
+                </div>
+
+                <div class="field" style="margin-bottom: 16px;">
+                    <label for="modalLeaveReason">Request / Verification Note</label>
+                    <input id="modalLeaveReason" type="text" placeholder="e.g. Medical certificate verified / NSS camp duty / Zonal Sports meet" required>
+                </div>
+
+                <div class="credit-explainer-box">
+                    <div>
+                        <strong>Attendance Credit Applied on Approval:</strong>
+                        <p class="muted" style="margin: 4px 0 0; font-size: 12px;">
+                            Approving this student marks them <strong>PRESENT (Approved Leave)</strong> and grants <strong>0.6 / 1 (60%)</strong> attendance credit for the day and adds <strong>+0.60 periods</strong> to their cumulative subject attendance.
+                        </p>
+                    </div>
+                    <span class="credit-pill-highlight">0.6 / 1 (60%)</span>
+                </div>
+
+                <div class="modal-actions">
+                    <button id="modalApproveBtn" type="submit" class="primary-button">
+                        ✓ Approve as Present (Grant 0.6/1 · 60% Credit)
+                    </button>
+                    <button id="modalRejectBtn" type="button" class="secondary-button danger-outline-btn">
+                        ✕ Reject (Keep Absent · 0/1)
+                    </button>
+                    <button id="modalCancelBtn" type="button" class="secondary-button">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
+
 </html>

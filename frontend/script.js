@@ -1,8 +1,6 @@
 const CANDIDATE_API_URLS = [
     "http://127.0.0.1:5000",
     "http://localhost:5000",
-    "http://127.0.0.1:5001",
-    "http://localhost:5001",
 ];
 
 let API_BASE_URL = CANDIDATE_API_URLS[0];
@@ -44,7 +42,7 @@ function setMessage(id, message, type = "") {
 
 async function resolveApiBaseUrl() {
     if (apiResolved) return API_BASE_URL;
-    if (window.location.port === "5000" || window.location.port === "5001") {
+    if (window.location.port === "5000") {
         API_BASE_URL = window.location.origin;
         apiResolved = true;
         return API_BASE_URL;
@@ -61,6 +59,8 @@ async function resolveApiBaseUrl() {
             // Try next candidate
         }
     }
+    API_BASE_URL = "http://127.0.0.1:5000";
+    apiResolved = true;
     return API_BASE_URL;
 }
 
@@ -85,16 +85,33 @@ async function apiRequest(path, options = {}) {
     return data;
 }
 
-function showApp(username = "Administrator") {
-    $("loginPage").classList.add("hidden");
-    $("appPage").classList.remove("hidden");
-    $("signedInUser").textContent = username;
+function showLanding() {
+    $("landingPage")?.classList.remove("hidden");
+    $("loginPage")?.classList.add("hidden");
+    $("appPage")?.classList.add("hidden");
+    window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function showLogin() {
-    $("appPage").classList.add("hidden");
-    $("loginPage").classList.remove("hidden");
+    $("landingPage")?.classList.add("hidden");
+    $("appPage")?.classList.add("hidden");
+    $("loginPage")?.classList.remove("hidden");
+    setMessage("loginMessage", "");
+    setTimeout(() => $("username")?.focus(), 50);
 }
+
+function showApp(username = "Administrator") {
+    $("landingPage")?.classList.add("hidden");
+    $("loginPage")?.classList.add("hidden");
+    $("appPage")?.classList.remove("hidden");
+    $("signedInUser").textContent = username;
+}
+
+// Landing Page <-> Login Page buttons
+["openLoginFromNavBtn", "openLoginFromHeroBtn", "openLoginFromContactBtn"].forEach((btnId) => {
+    $(btnId)?.addEventListener("click", showLogin);
+});
+$("backToLandingBtn")?.addEventListener("click", showLanding);
 
 function getSelectedBranchId() {
     const subjectId = Number($("subjectId")?.value);
@@ -138,6 +155,8 @@ function showView(view) {
         button.classList.toggle("active", button.dataset.view === view);
     });
 
+    loadPerformanceFilters();
+
     if (view === "directory") {
         loadStudents().then(() => {
             loadFilterOptions();
@@ -149,6 +168,8 @@ function showView(view) {
         loadStudents().then(() => {
             loadFilterOptions();
             loadAttendance();
+            loadDailyAttendanceRoster();
+            loadExamAbsenceVerification();
             populateAttendanceStudentDropdown();
         });
     }
@@ -186,8 +207,13 @@ function escapeHtml(value) {
     })[character]);
 }
 
-async function loadPerformanceFilters() {
-    if (filtersLoaded) return;
+async function loadPerformanceFilters(force = false) {
+    if (filtersLoaded && branchesCache.length > 0 && !force) {
+        populateOverviewBranchDropdown();
+        populateOverviewSubjectDropdown();
+        populateNewStudentBranchDropdown();
+        return;
+    }
     if (filtersLoadPromise) return filtersLoadPromise;
 
     filtersLoadPromise = (async () => {
@@ -195,13 +221,32 @@ async function loadPerformanceFilters() {
             const data = await apiRequest("/api/performance/filters");
             branchesCache = data.branches || [];
             assignmentsCache = data.assignments || [];
-            filtersLoaded = true;
+            filtersLoaded = branchesCache.length > 0;
+        } catch (error) {
+            try {
+                const stData = await apiRequest("/api/students");
+                const stList = stData.students || [];
+                const branchMap = new Map();
+                stList.forEach((s) => {
+                    if (s.branch_id && !branchMap.has(s.branch_id)) {
+                        branchMap.set(s.branch_id, {
+                            branch_id: s.branch_id,
+                            branch_code: s.branch_code,
+                            branch_name: s.branch_name || s.branch_code
+                        });
+                    }
+                });
+                branchesCache = [...branchMap.values()].sort((a, b) =>
+                    String(a.branch_code).localeCompare(String(b.branch_code))
+                );
+                filtersLoaded = branchesCache.length > 0;
+            } catch {
+                setMessage("dashboardMessage", error.message, "error");
+            }
+        } finally {
             populateOverviewBranchDropdown();
             populateOverviewSubjectDropdown();
             populateNewStudentBranchDropdown();
-        } catch (error) {
-            setMessage("dashboardMessage", error.message, "error");
-        } finally {
             filtersLoadPromise = null;
         }
     })();
@@ -317,15 +362,138 @@ function renderPieChart(passed = 0, failed = 0) {
     if (legendFail) legendFail.textContent = `${failCount} student(s) (${failPct.toFixed(2)}%)`;
 }
 
-function renderTopPerformers(students = []) {
-    const body = $("topPerformersBody");
 
-    if (!students.length) {
+// ==========================================================
+// UNIVERSAL STUDENT TABLE PAGINATION ENGINE (10, 25, 50, ALL)
+// ==========================================================
+const tablePaginationState = {
+    topPerformersBody: { pageSize: "10", currentPage: 1 },
+    supportBody: { pageSize: "10", currentPage: 1 },
+    directoryBody: { pageSize: "10", currentPage: 1 },
+    dailyRosterBody: { pageSize: "10", currentPage: 1 },
+    examVerificationBody: { pageSize: "10", currentPage: 1 },
+    attendanceBody: { pageSize: "10", currentPage: 1 },
+    analyticsDiagnosticBody: { pageSize: "10", currentPage: 1 },
+};
+
+function paginateRows(tbodyId, allRows, onPageChange) {
+    if (!tablePaginationState[tbodyId]) {
+        tablePaginationState[tbodyId] = { pageSize: "10", currentPage: 1 };
+    }
+    const state = tablePaginationState[tbodyId];
+    const total = Array.isArray(allRows) ? allRows.length : 0;
+    const isAll = state.pageSize === "all";
+    const size = isAll ? (total || 1) : Number(state.pageSize) || 10;
+    const totalPages = Math.max(1, Math.ceil(total / size));
+
+    if (state.currentPage > totalPages) state.currentPage = totalPages;
+    if (state.currentPage < 1) state.currentPage = 1;
+
+    const startIdx = isAll ? 0 : (state.currentPage - 1) * size;
+    const endIdx = isAll ? total : Math.min(startIdx + size, total);
+    const pageRows = isAll ? allRows : allRows.slice(startIdx, endIdx);
+
+    renderPaginationBar(tbodyId, total, startIdx, endIdx, state.currentPage, totalPages, state.pageSize, onPageChange);
+    return pageRows;
+}
+
+function resetTablePage(tbodyId) {
+    if (tablePaginationState[tbodyId]) {
+        tablePaginationState[tbodyId].currentPage = 1;
+    }
+}
+
+function renderPaginationBar(tbodyId, total, startIdx, endIdx, currentPage, totalPages, pageSize, onPageChange) {
+    const tbody = $(tbodyId);
+    if (!tbody) return;
+    const tableWrap = tbody.closest(".table-wrap");
+    if (!tableWrap) return;
+
+    // Remove any max-height scroll trap so the pagination bar cleanly controls visible rows
+    tableWrap.style.maxHeight = "none";
+
+    const barId = `${tbodyId}_paginationBar`;
+    let bar = $(barId);
+    if (!bar) {
+        bar = document.createElement("div");
+        bar.id = barId;
+        bar.className = "table-pagination-bar";
+        tableWrap.insertAdjacentElement("afterend", bar);
+    }
+
+    const fromNum = total === 0 ? 0 : startIdx + 1;
+    const toNum = total === 0 ? 0 : endIdx;
+
+    bar.innerHTML = `
+        <div class="pagination-info">
+            Showing <strong>${fromNum}–${toNum}</strong> of <strong>${total}</strong> student(s)
+        </div>
+        <div class="pagination-controls">
+            <label class="page-size-label">
+                Show students:
+                <select class="page-size-select" data-tbody-id="${tbodyId}">
+                    <option value="10" ${String(pageSize) === "10" ? "selected" : ""}>10</option>
+                    <option value="25" ${String(pageSize) === "25" ? "selected" : ""}>25</option>
+                    <option value="50" ${String(pageSize) === "50" ? "selected" : ""}>50</option>
+                    <option value="all" ${String(pageSize) === "all" ? "selected" : ""}>All</option>
+                </select>
+            </label>
+            <div class="page-nav-group">
+                <button type="button" class="secondary-button page-nav-btn prev-page-btn" ${currentPage <= 1 ? "disabled" : ""}>
+                    ← Prev
+                </button>
+                <span class="page-indicator">Page ${currentPage} of ${totalPages}</span>
+                <button type="button" class="secondary-button page-nav-btn next-page-btn" ${currentPage >= totalPages ? "disabled" : ""}>
+                    Next →
+                </button>
+            </div>
+        </div>
+    `;
+
+    const selectEl = bar.querySelector(".page-size-select");
+    selectEl?.addEventListener("change", (e) => {
+        tablePaginationState[tbodyId].pageSize = e.target.value;
+        tablePaginationState[tbodyId].currentPage = 1;
+        if (typeof onPageChange === "function") onPageChange();
+    });
+
+    const prevBtn = bar.querySelector(".prev-page-btn");
+    prevBtn?.addEventListener("click", () => {
+        if (tablePaginationState[tbodyId].currentPage > 1) {
+            tablePaginationState[tbodyId].currentPage--;
+            if (typeof onPageChange === "function") onPageChange();
+        }
+    });
+
+    const nextBtn = bar.querySelector(".next-page-btn");
+    nextBtn?.addEventListener("click", () => {
+        if (tablePaginationState[tbodyId].currentPage < totalPages) {
+            tablePaginationState[tbodyId].currentPage++;
+            if (typeof onPageChange === "function") onPageChange();
+        }
+    });
+}
+
+let cachedTopPerformersList = [];
+let cachedSupportList = [];
+
+function renderTopPerformers(students = null) {
+    const body = $("topPerformersBody");
+    if (!body) return;
+
+    if (students !== null) {
+        const allPassing = (lastAnalyticsData?.all_students || []).filter((s) => s.result === "PASS");
+        cachedTopPerformersList = allPassing.length >= students.length ? allPassing : students;
+    }
+
+    const pageRows = paginateRows("topPerformersBody", cachedTopPerformersList, () => renderTopPerformers(null));
+
+    if (!cachedTopPerformersList.length) {
         body.innerHTML = '<tr><td colspan="5" class="empty-cell">No passing student records yet.</td></tr>';
         return;
     }
 
-    body.innerHTML = students.map((student) => `
+    body.innerHTML = pageRows.map((student) => `
         <tr>
             <td>#${escapeHtml(student.rank)}</td>
             <td><strong>${escapeHtml(student.student_name)}</strong></td>
@@ -336,15 +504,22 @@ function renderTopPerformers(students = []) {
     `).join("");
 }
 
-function renderSupport(students = []) {
+function renderSupport(students = null) {
     const body = $("supportBody");
+    if (!body) return;
 
-    if (!students.length) {
+    if (students !== null) {
+        cachedSupportList = students;
+    }
+
+    const pageRows = paginateRows("supportBody", cachedSupportList, () => renderSupport(null));
+
+    if (!cachedSupportList.length) {
         body.innerHTML = '<tr><td colspan="4" class="empty-cell">No students currently need support.</td></tr>';
         return;
     }
 
-    body.innerHTML = students.map((student) => `
+    body.innerHTML = pageRows.map((student) => `
         <tr>
             <td><strong>${escapeHtml(student.student_name)}</strong></td>
             <td>${escapeHtml(student.roll_no)}</td>
@@ -400,8 +575,11 @@ async function loadAnalytics() {
             analytics.passed_students,
             analytics.failed_students
         );
-        renderTopPerformers(analytics.top_performers);
-        renderSupport(analytics.students_needing_support);
+        resetTablePage("topPerformersBody");
+        resetTablePage("supportBody");
+        resetTablePage("analyticsDiagnosticBody");
+        renderTopPerformers(analytics.top_performers || []);
+        renderSupport(analytics.students_needing_support || []);
         renderAnalyticsCharts();
 
         setMessage("dashboardMessage", "Analytics refreshed successfully.", "success");
@@ -627,7 +805,7 @@ $("logoutButton").addEventListener("click", async () => {
         } catch {
             // Ignore unavailable browser storage.
         }
-        showLogin();
+        showLanding();
         delete $("marksForm").dataset.markId;
         $("marksMode").value = "auto";
     }
@@ -649,6 +827,9 @@ $("refreshButton").addEventListener("click", () => {
     }
     if (currentView === "attendance") {
         loadAttendance();
+        loadDailyAttendanceRoster();
+        loadExamAbsenceVerification();
+        if (!$("examSchedulePanel")?.classList.contains("hidden")) loadBranchExamSchedule();
     }
     if (currentView === "students" && $("allSubjectsStudentSelect")?.value) {
         loadStudentAllSubjectsPerformance();
@@ -1309,6 +1490,9 @@ $("overviewBranch")?.addEventListener("change", () => {
     }
     if (currentView === "attendance") {
         loadAttendance();
+        loadDailyAttendanceRoster();
+        loadExamAbsenceVerification();
+        if (!$("examSchedulePanel")?.classList.contains("hidden")) loadBranchExamSchedule();
     }
 
     loadAnalytics();
@@ -1330,6 +1514,9 @@ $("subjectId").addEventListener("change", () => {
     }
     if (currentView === "attendance") {
         loadAttendance();
+        loadDailyAttendanceRoster();
+        loadExamAbsenceVerification();
+        if (!$("examSchedulePanel")?.classList.contains("hidden")) loadBranchExamSchedule();
     }
 
     loadAnalytics();
@@ -1392,9 +1579,11 @@ async function deleteStudentById(studentId, studentLabel = "this student") {
 function renderDirectory() {
     const body = $("directoryBody");
     if (!body) return;
-    const rows = filteredStudents();
-    body.innerHTML = rows.length
-        ? rows.map((s) => `
+    const allMatching = filteredStudents();
+    const pageRows = paginateRows("directoryBody", allMatching, renderDirectory);
+
+    body.innerHTML = pageRows.length
+        ? pageRows.map((s) => `
             <tr>
                 <td>${escapeHtml(s.student_id)}</td>
                 <td>${escapeHtml(s.roll_no || "—")}</td>
@@ -1418,14 +1607,15 @@ function renderDirectory() {
         });
     });
 
-    setMessage("directoryMessage", `${rows.length} student(s) shown.`);
+    setMessage("directoryMessage", `${allMatching.length} total matching student(s).`);
 }
 
 // Add Student Form handlers
-$("toggleAddStudentBtn")?.addEventListener("click", () => {
+$("toggleAddStudentBtn")?.addEventListener("click", async () => {
     $("deleteStudentForm")?.classList.add("hidden");
     const form = $("addStudentForm");
     if (!form) return;
+    await loadPerformanceFilters();
     populateNewStudentBranchDropdown();
     form.classList.toggle("hidden");
     if (!form.classList.contains("hidden")) {
@@ -1529,6 +1719,67 @@ function statusBadge(status) {
     return `<span class="attendance-badge ${cls}"><span aria-hidden="true">${symbol}</span> ${label}</span>`;
 }
 
+function renderCumulativeAttendanceTable(records = null) {
+    const body = $("attendanceBody");
+    if (!body) return;
+    const search = ($("attendanceSearch")?.value || "").trim().toLowerCase();
+
+    const filtered = records || lastAttendanceRecords.filter((s) =>
+        !search ||
+        String(s.student_id).includes(search) ||
+        String(s.roll_no || "").toLowerCase().includes(search) ||
+        String(s.name || "").toLowerCase().includes(search)
+    );
+
+    const pageRows = paginateRows("attendanceBody", filtered, () => renderCumulativeAttendanceTable(null));
+
+    body.innerHTML = pageRows.length
+        ? pageRows.map((s) => `
+            <tr>
+                <td>${escapeHtml(s.student_id)}</td>
+                <td>${escapeHtml(s.roll_no || "—")}</td>
+                <td><strong>${escapeHtml(s.name)}</strong></td>
+                <td>${escapeHtml(s.branch_code || "—")}</td>
+                <td>Sem ${escapeHtml(s.semester ?? "—")}</td>
+                <td>${escapeHtml(s.attended_periods ?? 0)} / ${escapeHtml(s.total_periods ?? 0)} periods</td>
+                <td>${s.attendance_percentage == null ? "—" : `<strong>${Number(s.attendance_percentage).toFixed(1)}%</strong>`}</td>
+                <td>${s.status ? statusBadge(s.status) : '<span class="muted">No attendance records</span>'}</td>
+                <td>
+                    <button type="button" class="secondary-button edit-att-btn"
+                        data-student-id="${s.student_id}">
+                        Edit
+                    </button>
+                </td>
+            </tr>
+        `).join("")
+        : '<tr><td colspan="9" class="empty-cell">No students match these filters.</td></tr>';
+
+    body.querySelectorAll(".edit-att-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const sid = Number(btn.dataset.studentId);
+            const panel = $("attendanceFormPanel");
+            if (panel) panel.classList.remove("hidden");
+
+            populateAttendanceStudentDropdown();
+            if ($("attStudentSelect")) {
+                if (![...$("attStudentSelect").options].some((o) => Number(o.value) === sid)) {
+                    const st = studentsCache.find((item) => Number(item.student_id) === sid);
+                    if (st) {
+                        $("attStudentSelect").insertAdjacentHTML(
+                            "beforeend",
+                            `<option value="${st.student_id}">${escapeHtml(st.roll_no)} — ${escapeHtml(st.name)} (${escapeHtml(st.branch_code)})</option>`
+                        );
+                    }
+                }
+                $("attStudentSelect").value = String(sid);
+            }
+            loadStudentSubjectsForAttendanceForm(sid);
+            panel?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            setMessage("attRecordMessage", "Enter Periods Attended and Total Periods beside each subject — percentage calculates and saves automatically.");
+        });
+    });
+}
+
 async function loadAttendance() {
     if (!studentsLoaded) await loadStudents();
     const body = $("attendanceBody"); if (!body) return;
@@ -1557,51 +1808,7 @@ async function loadAttendance() {
             String(s.name || "").toLowerCase().includes(search)
         );
 
-        body.innerHTML = records.length
-            ? records.map((s) => `
-                <tr>
-                    <td>${escapeHtml(s.student_id)}</td>
-                    <td>${escapeHtml(s.roll_no || "—")}</td>
-                    <td><strong>${escapeHtml(s.name)}</strong></td>
-                    <td>${escapeHtml(s.branch_code || "—")}</td>
-                    <td>Sem ${escapeHtml(s.semester ?? "—")}</td>
-                    <td>${escapeHtml(s.attended_periods ?? 0)} / ${escapeHtml(s.total_periods ?? 0)} periods</td>
-                    <td>${s.attendance_percentage == null ? "—" : `<strong>${Number(s.attendance_percentage).toFixed(1)}%</strong>`}</td>
-                    <td>${s.status ? statusBadge(s.status) : '<span class="muted">No attendance records</span>'}</td>
-                    <td>
-                        <button type="button" class="secondary-button edit-att-btn"
-                            data-student-id="${s.student_id}">
-                            Edit
-                        </button>
-                    </td>
-                </tr>
-            `).join("")
-            : '<tr><td colspan="9" class="empty-cell">No students match these filters.</td></tr>';
-
-        body.querySelectorAll(".edit-att-btn").forEach((btn) => {
-            btn.addEventListener("click", () => {
-                const sid = Number(btn.dataset.studentId);
-                const panel = $("attendanceFormPanel");
-                if (panel) panel.classList.remove("hidden");
-
-                populateAttendanceStudentDropdown();
-                if ($("attStudentSelect")) {
-                    if (![...$("attStudentSelect").options].some((o) => Number(o.value) === sid)) {
-                        const st = studentsCache.find((item) => Number(item.student_id) === sid);
-                        if (st) {
-                            $("attStudentSelect").insertAdjacentHTML(
-                                "beforeend",
-                                `<option value="${st.student_id}">${escapeHtml(st.roll_no)} — ${escapeHtml(st.name)} (${escapeHtml(st.branch_code)})</option>`
-                            );
-                        }
-                    }
-                    $("attStudentSelect").value = String(sid);
-                }
-                loadStudentSubjectsForAttendanceForm(sid);
-                panel?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                setMessage("attRecordMessage", "Enter Periods Attended and Total Periods beside each subject — percentage calculates and saves automatically.");
-            });
-        });
+        renderCumulativeAttendanceTable(records);
 
         $("attendanceTotal").textContent = records.length;
         $("attendanceActive").textContent = records.filter((s) => s.status === "Active").length;
@@ -1690,8 +1897,9 @@ function renderAnalyticsCharts() {
 
     const diagBody = $("analyticsDiagnosticBody");
     if (diagBody) {
-        diagBody.innerHTML = allStudents.length
-            ? allStudents.map((s) => `
+        const pageRows = paginateRows("analyticsDiagnosticBody", allStudents, renderAnalyticsCharts);
+        diagBody.innerHTML = pageRows.length
+            ? pageRows.map((s) => `
                 <tr>
                     <td><strong>${escapeHtml(s.student_name)}</strong></td>
                     <td>${escapeHtml(s.roll_no)}</td>
@@ -1723,8 +1931,768 @@ async function restoreSession() {
         showView(getSavedView());
         await loadAnalytics();
     } catch {
-        showLogin();
+        // Show the AstraMindNexus Landing Page first when not signed in
+        showLanding();
     }
 }
+
+
+let dailyRosterCache = [];
+let dailyExamBannerCache = [];
+
+function getActiveLeaveCategoryFilter() {
+    return ($("dailyLeaveCategoryFilter")?.value || "").trim();
+}
+
+function getFilteredDailyRoster() {
+    const search = ($("dailyRosterSearch")?.value || "").trim().toLowerCase();
+    const leaveFilter = getActiveLeaveCategoryFilter();
+
+    return dailyRosterCache.filter((st) => {
+        const matchesSearch =
+            !search ||
+            String(st.roll_no || "").toLowerCase().includes(search) ||
+            String(st.name || "").toLowerCase().includes(search) ||
+            String(st.leave_category || "").toLowerCase().includes(search);
+
+        if (!matchesSearch) return false;
+        if (!leaveFilter) return true;
+
+        if (leaveFilter === "ALL_LEAVES") {
+            return Boolean(st.leave_category);
+        }
+        if (leaveFilter === "PENDING_LEAVES") {
+            return Boolean(st.leave_category) && st.leave_status === "PENDING";
+        }
+        if (leaveFilter === "APPROVED_LEAVES") {
+            return st.leave_status === "APPROVED";
+        }
+        return st.leave_category === leaveFilter;
+    });
+}
+
+function updateDailyRosterSummaryCounts() {
+    let fullPresent = 0;
+    let approvedLeave = 0;
+    let absent = 0;
+    let pendingLeave = 0;
+    let medCount = 0;
+    let nssCount = 0;
+    let sportsCount = 0;
+
+    dailyRosterCache.forEach((st) => {
+        if (st.leave_category === "Medical Leave") medCount++;
+        if (st.leave_category === "NSS") nssCount++;
+        if (st.leave_category === "Sports") sportsCount++;
+
+        if (st.leave_status === "APPROVED") {
+            approvedLeave++;
+        } else if (st.attendance_status === "PRESENT") {
+            fullPresent++;
+        } else if (st.attendance_status === "ABSENT") {
+            absent++;
+        }
+
+        if (st.leave_category && st.leave_status === "PENDING") {
+            pendingLeave++;
+        }
+    });
+
+    const filtered = getFilteredDailyRoster();
+    if ($("dailyTotalCount")) $("dailyTotalCount").textContent = filtered.length;
+    if ($("dailyPresentCount")) $("dailyPresentCount").textContent = fullPresent;
+    if ($("dailyApprovedLeaveCount")) $("dailyApprovedLeaveCount").textContent = approvedLeave;
+    if ($("dailyAbsentCount")) $("dailyAbsentCount").textContent = absent;
+    if ($("dailyPendingLeaveCount")) $("dailyPendingLeaveCount").textContent = pendingLeave;
+
+    if ($("countMedicalLeave")) $("countMedicalLeave").textContent = medCount;
+    if ($("countNSS")) $("countNSS").textContent = nssCount;
+    if ($("countSports")) $("countSports").textContent = sportsCount;
+    if ($("countPendingLeaves")) $("countPendingLeaves").textContent = pendingLeave;
+    if ($("countApprovedLeaves")) $("countApprovedLeaves").textContent = approvedLeave;
+}
+
+function formatLeaveCategoryBadge(st) {
+    const cat = st.leave_category;
+    const status = st.leave_status || "NONE";
+    if (!cat) {
+        return '<span class="leave-badge none">Regular (No Leave Request)</span>';
+    }
+    const cls = cat === "Medical Leave" ? "medical" : cat === "NSS" ? "nss" : "sports";
+    const icon = cat === "Medical Leave" ? "🏥" : cat === "NSS" ? "🎖" : "🏅";
+    const statusText = status === "APPROVED"
+        ? "✓ Approved (0.6/1)"
+        : status === "REJECTED"
+        ? "✕ Rejected"
+        : "⏳ Pending Request";
+    return `
+        <span class="leave-badge ${cls}" title="${escapeHtml(st.leave_reason || cat)}">
+            ${icon} ${escapeHtml(cat)} · <strong>${statusText}</strong>
+        </span>
+    `;
+}
+
+function formatCreditBadge(st) {
+    const status = st.leave_status || "NONE";
+    if (status === "APPROVED") {
+        return '<span class="credit-badge partial">0.6 / 1 (60%)</span>';
+    }
+    if (st.attendance_status === "PRESENT") {
+        return '<span class="credit-badge full">1.0 / 1 (100%)</span>';
+    }
+    return '<span class="credit-badge zero">0.0 / 1 (0%)</span>';
+}
+
+function renderDailyRosterTable() {
+    const body = $("dailyRosterBody");
+    if (!body) return;
+
+    const filtered = getFilteredDailyRoster();
+    if ($("dailyTotalCount")) $("dailyTotalCount").textContent = filtered.length;
+
+    const pageRows = paginateRows("dailyRosterBody", filtered, renderDailyRosterTable);
+
+    if (!filtered.length) {
+        body.innerHTML = '<tr><td colspan="7" class="empty-cell">No students match this filter. Try switching the Medical Leave / NSS / Sports filter above.</td></tr>';
+        return;
+    }
+
+    body.innerHTML = pageRows.map((st) => {
+        const isApprovedLeave = st.leave_status === "APPROVED";
+        const isP = st.attendance_status === "PRESENT" && !isApprovedLeave;
+        const isA = st.attendance_status === "ABSENT";
+        const isPendingLeave = Boolean(st.leave_category) && st.leave_status === "PENDING";
+
+        const examLabel = st.scheduled_exam
+            ? `<strong>${escapeHtml(st.scheduled_exam)}</strong>`
+            : '<span class="muted">Regular Class</span>';
+
+        const popupBtnLabel = isPendingLeave
+            ? `★ Review ${escapeHtml(st.leave_category)} (0.6/1)`
+            : isApprovedLeave
+            ? `✓ ${escapeHtml(st.leave_category)} (0.6/1)`
+            : `⚡ NSS / Sports / Medical`;
+
+        return `
+            <tr data-student-id="${st.student_id}">
+                <td><strong>${escapeHtml(st.roll_no)}</strong></td>
+                <td><strong>${escapeHtml(st.name)}</strong></td>
+                <td>${escapeHtml(st.branch_code)} · Sem ${escapeHtml(st.semester)}</td>
+                <td>${examLabel}</td>
+                <td>${formatLeaveCategoryBadge(st)}</td>
+                <td>${formatCreditBadge(st)}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <div class="status-toggle-group">
+                            <button type="button" class="status-toggle-btn present ${isP ? "selected" : ""}"
+                                data-student-id="${st.student_id}" data-status="PRESENT" title="Regular Present (1.0/1 · 100%)">
+                                ✓ Present
+                            </button>
+                            <button type="button" class="status-toggle-btn absent ${isA ? "selected" : ""}"
+                                data-student-id="${st.student_id}" data-status="ABSENT" title="Absent (0/1 · 0%)">
+                                ✕ Absent
+                            </button>
+                        </div>
+                        <button type="button"
+                            class="popup-trigger-btn ${isPendingLeave ? "pending-highlight" : ""}"
+                            data-open-leave-modal="${st.student_id}">
+                            ${popupBtnLabel}
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join("");
+
+    // Standard Present (1.0) / Absent (0.0) toggle buttons
+    body.querySelectorAll(".status-toggle-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+            const sid = Number(btn.dataset.studentId);
+            const newStatus = btn.dataset.status;
+            const dateStr = $("dailyAttendanceDate")?.value || "2026-08-10";
+
+            const stObj = dailyRosterCache.find((item) => Number(item.student_id) === sid);
+            if (stObj) {
+                stObj.attendance_status = newStatus;
+                if (stObj.leave_status === "APPROVED") {
+                    stObj.leave_status = stObj.leave_category ? "PENDING" : "NONE";
+                }
+                stObj.attendance_credit = newStatus === "PRESENT" ? 1.0 : 0.0;
+            }
+
+            updateDailyRosterSummaryCounts();
+            renderDailyRosterTable();
+
+            try {
+                await apiRequest("/api/attendance/daily", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        attendance_date: dateStr,
+                        records: [{
+                            student_id: sid,
+                            attendance_status: newStatus,
+                            leave_status: stObj?.leave_status || "NONE",
+                            attendance_credit: newStatus === "PRESENT" ? 1.0 : 0.0
+                        }]
+                    })
+                });
+                setMessage("dailyRosterMessage", `Saved ${stObj?.roll_no || "student"} as ${newStatus} (${newStatus === "PRESENT" ? "1.0/1" : "0/1"}) on ${dateStr}.`, "success");
+                loadExamAbsenceVerification();
+            } catch (error) {
+                setMessage("dailyRosterMessage", error.message, "error");
+            }
+        });
+    });
+
+    // Pop-up modal trigger button on every student row
+    body.querySelectorAll("[data-open-leave-modal]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const sid = Number(btn.dataset.openLeaveModal);
+            openLeaveApprovalModal(sid);
+        });
+    });
+}
+
+function openLeaveApprovalModal(studentId) {
+    const st = dailyRosterCache.find((item) => Number(item.student_id) === Number(studentId));
+    const modal = $("leaveApprovalModal");
+    if (!st || !modal) return;
+
+    const dateStr = $("dailyAttendanceDate")?.value || "2026-08-10";
+    $("modalStudentId").value = String(st.student_id);
+    $("modalStudentName").textContent = st.name;
+    $("modalStudentMeta").textContent = `${st.roll_no} · ${st.branch_code} (Sem ${st.semester})`;
+    $("modalAttendanceDateLabel").textContent = dateStr;
+
+    const catSelect = $("modalLeaveCategory");
+    if (catSelect) {
+        catSelect.value = st.leave_category || "Medical Leave";
+    }
+
+    const defaultReasons = {
+        "Medical Leave": "Medical certificate verified for fever / hospital visit",
+        "NSS": "NSS Community Service & Blood Donation Camp representation",
+        "Sports": "Inter-University Zonal Sports Club tournament representation"
+    };
+    const reasonInput = $("modalLeaveReason");
+    if (reasonInput) {
+        reasonInput.value = st.leave_reason || defaultReasons[catSelect?.value || "Medical Leave"];
+    }
+
+    modal.classList.remove("hidden");
+}
+
+function closeLeaveApprovalModal() {
+    $("leaveApprovalModal")?.classList.add("hidden");
+}
+
+$("modalLeaveCategory")?.addEventListener("change", () => {
+    const cat = $("modalLeaveCategory").value;
+    const defaultReasons = {
+        "Medical Leave": "Medical certificate verified for fever / hospital visit",
+        "NSS": "NSS Community Service & Blood Donation Camp representation",
+        "Sports": "Inter-University Zonal Sports Club tournament representation"
+    };
+    const reasonInput = $("modalLeaveReason");
+    if (reasonInput) {
+        reasonInput.value = defaultReasons[cat] || "";
+    }
+});
+
+$("closeLeaveModalBtn")?.addEventListener("click", closeLeaveApprovalModal);
+$("modalCancelBtn")?.addEventListener("click", closeLeaveApprovalModal);
+$("leaveApprovalModal")?.addEventListener("click", (e) => {
+    if (e.target === $("leaveApprovalModal")) closeLeaveApprovalModal();
+});
+
+// Submit Pop-up Modal: Approve as Present (0.6/1 · 60% credit)
+$("leaveApprovalForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const sid = Number($("modalStudentId")?.value);
+    const cat = $("modalLeaveCategory")?.value || "Medical Leave";
+    const reason = ($("modalLeaveReason")?.value || "").trim();
+    const dateStr = $("dailyAttendanceDate")?.value || "2026-08-10";
+
+    if (!sid) return;
+
+    $("modalApproveBtn").disabled = true;
+    try {
+        const res = await apiRequest("/api/attendance/leave-approve", {
+            method: "POST",
+            body: JSON.stringify({
+                attendance_date: dateStr,
+                action: "APPROVE",
+                student_id: sid,
+                leave_category: cat,
+                leave_reason: reason
+            })
+        });
+
+        const stObj = dailyRosterCache.find((item) => Number(item.student_id) === sid);
+        if (stObj) {
+            stObj.attendance_status = "PRESENT";
+            stObj.leave_category = cat;
+            stObj.leave_status = "APPROVED";
+            stObj.leave_reason = reason;
+            stObj.attendance_credit = 0.60;
+        }
+
+        closeLeaveApprovalModal();
+        updateDailyRosterSummaryCounts();
+        renderDailyRosterTable();
+        setMessage("dailyRosterMessage", res.message || `Approved ${cat} (0.6/1 · 60% credit).`, "success");
+        await loadAttendance();
+        await loadExamAbsenceVerification();
+    } catch (error) {
+        setMessage("dailyRosterMessage", error.message, "error");
+    } finally {
+        $("modalApproveBtn").disabled = false;
+    }
+});
+
+// Reject button inside Pop-up Modal
+$("modalRejectBtn")?.addEventListener("click", async () => {
+    const sid = Number($("modalStudentId")?.value);
+    const cat = $("modalLeaveCategory")?.value || "Medical Leave";
+    const reason = ($("modalLeaveReason")?.value || "").trim();
+    const dateStr = $("dailyAttendanceDate")?.value || "2026-08-10";
+
+    if (!sid) return;
+
+    $("modalRejectBtn").disabled = true;
+    try {
+        const res = await apiRequest("/api/attendance/leave-approve", {
+            method: "POST",
+            body: JSON.stringify({
+                attendance_date: dateStr,
+                action: "REJECT",
+                student_id: sid,
+                leave_category: cat,
+                leave_reason: reason
+            })
+        });
+
+        const stObj = dailyRosterCache.find((item) => Number(item.student_id) === sid);
+        if (stObj) {
+            stObj.attendance_status = "ABSENT";
+            stObj.leave_category = cat;
+            stObj.leave_status = "REJECTED";
+            stObj.leave_reason = reason;
+            stObj.attendance_credit = 0.00;
+        }
+
+        closeLeaveApprovalModal();
+        updateDailyRosterSummaryCounts();
+        renderDailyRosterTable();
+        setMessage("dailyRosterMessage", res.message || `Rejected ${cat} request (0/1 credit).`, "success");
+        await loadAttendance();
+        await loadExamAbsenceVerification();
+    } catch (error) {
+        setMessage("dailyRosterMessage", error.message, "error");
+    } finally {
+        $("modalRejectBtn").disabled = false;
+    }
+});
+
+// Exclusive Bulk Approval for Filtered Medical Leave / NSS / Sports Club
+$("approveFilteredLeavesBtn")?.addEventListener("click", async () => {
+    const dateStr = $("dailyAttendanceDate")?.value || "2026-08-10";
+    const activeFilter = getActiveLeaveCategoryFilter();
+    const visibleRows = getFilteredDailyRoster();
+
+    // Target students who have a leave category in the current filter
+    const targets = visibleRows.filter((st) => Boolean(st.leave_category));
+    if (!targets.length) {
+        setMessage(
+            "dailyRosterMessage",
+            "No Medical Leave, NSS, or Sports requests in the current filter. Select a category filter first or click a student's pop-up button.",
+            "error"
+        );
+        return;
+    }
+
+    const filterLabel = activeFilter && !activeFilter.includes("_")
+        ? activeFilter
+        : "Medical Leave / NSS / Sports";
+
+    $("approveFilteredLeavesBtn").disabled = true;
+    setMessage("dailyRosterMessage", `Approving ${targets.length} ${filterLabel} request(s) with 0.6/1 (60%) credit…`);
+
+    try {
+        const payloadStudents = targets.map((st) => ({
+            student_id: st.student_id,
+            leave_category: st.leave_category,
+            leave_reason: st.leave_reason || `Approved ${st.leave_category} (0.6/1 credit)`
+        }));
+
+        const res = await apiRequest("/api/attendance/leave-approve", {
+            method: "POST",
+            body: JSON.stringify({
+                attendance_date: dateStr,
+                action: "APPROVE",
+                students: payloadStudents
+            })
+        });
+
+        targets.forEach((st) => {
+            st.attendance_status = "PRESENT";
+            st.leave_status = "APPROVED";
+            st.attendance_credit = 0.60;
+        });
+
+        updateDailyRosterSummaryCounts();
+        renderDailyRosterTable();
+        setMessage("dailyRosterMessage", res.message || `Approved ${targets.length} student(s) with 0.6/1 (60%) credit!`, "success");
+        await loadAttendance();
+        await loadExamAbsenceVerification();
+    } catch (error) {
+        setMessage("dailyRosterMessage", error.message, "error");
+    } finally {
+        $("approveFilteredLeavesBtn").disabled = false;
+    }
+});
+
+async function loadDailyAttendanceRoster() {
+    const dateInput = $("dailyAttendanceDate");
+    const dateStr = (dateInput?.value || "2026-08-10").trim();
+    const branchId = getSelectedBranchId();
+    const body = $("dailyRosterBody");
+    if (!body) return;
+
+    document.querySelectorAll(".exam-chip").forEach((chip) => {
+        chip.classList.toggle("active", chip.dataset.date === dateStr);
+    });
+
+    body.innerHTML = '<tr><td colspan="7" class="empty-cell">Loading daily roll-call roster &amp; special leave requests…</td></tr>';
+
+    try {
+        const query = new URLSearchParams({ date: dateStr });
+        if (branchId) query.set("branch_id", String(branchId));
+
+        const data = await apiRequest(`/api/attendance/daily?${query.toString()}`);
+        dailyRosterCache = data.students || [];
+        dailyExamBannerCache = data.exams_on_date || [];
+
+        const banner = $("dailyExamBanner");
+        if (banner) {
+            if (dailyExamBannerCache.length) {
+                const labels = dailyExamBannerCache.map(
+                    (e) => `<strong>${escapeHtml(e.branch_code)}</strong>: ${escapeHtml(e.subject_code)} (${escapeHtml(e.assessment_name)})`
+                ).join(" &nbsp;|&nbsp; ");
+                banner.innerHTML = `📅 <strong>Scheduled Examination Date (${escapeHtml(dateStr)}):</strong> ${labels}`;
+                banner.classList.remove("hidden");
+            } else {
+                banner.classList.add("hidden");
+            }
+        }
+
+        updateDailyRosterSummaryCounts();
+        renderDailyRosterTable();
+        setMessage("dailyRosterMessage", `Loaded ${dailyRosterCache.length} student(s) for ${dateStr}.`, "success");
+    } catch (error) {
+        body.innerHTML = `<tr><td colspan="7" class="empty-cell">${escapeHtml(error.message)}</td></tr>`;
+    }
+}
+
+async function bulkMarkDailyRoster(targetStatus) {
+    const affected = getFilteredDailyRoster();
+    if (!affected.length) return;
+
+    affected.forEach((st) => {
+        st.attendance_status = targetStatus;
+        if (targetStatus === "PRESENT" && st.leave_status !== "APPROVED") {
+            st.attendance_credit = 1.00;
+        } else if (targetStatus === "ABSENT") {
+            if (st.leave_status === "APPROVED") st.leave_status = "PENDING";
+            st.attendance_credit = 0.00;
+        }
+    });
+
+    updateDailyRosterSummaryCounts();
+    renderDailyRosterTable();
+    await saveEntireDailyRoster(affected);
+}
+
+async function saveEntireDailyRoster(subset = null) {
+    const dateStr = ($("dailyAttendanceDate")?.value || "2026-08-10").trim();
+    const listToSave = subset || dailyRosterCache;
+    const records = listToSave
+        .filter((st) => st.attendance_status === "PRESENT" || st.attendance_status === "ABSENT")
+        .map((st) => ({
+            student_id: st.student_id,
+            attendance_status: st.attendance_status,
+            leave_category: st.leave_category || null,
+            leave_status: st.leave_status || "NONE",
+            leave_reason: st.leave_reason || null,
+            attendance_credit: st.leave_status === "APPROVED" ? 0.60 : (st.attendance_status === "PRESENT" ? 1.00 : 0.00)
+        }));
+
+    if (!records.length) {
+        setMessage("dailyRosterMessage", "Mark at least one student Present or Absent first.", "error");
+        return;
+    }
+
+    $("saveDailyRosterBtn").disabled = true;
+    setMessage("dailyRosterMessage", `Saving ${records.length} attendance records for ${dateStr}…`);
+
+    try {
+        const res = await apiRequest("/api/attendance/daily", {
+            method: "POST",
+            body: JSON.stringify({
+                attendance_date: dateStr,
+                records
+            })
+        });
+        setMessage("dailyRosterMessage", res.message || "Daily attendance saved!", "success");
+        await loadExamAbsenceVerification();
+    } catch (error) {
+        setMessage("dailyRosterMessage", error.message, "error");
+    } finally {
+        $("saveDailyRosterBtn").disabled = false;
+    }
+}
+
+async function loadBranchExamSchedule() {
+    const body = $("examScheduleBody");
+    if (!body) return;
+    const branchId = getSelectedBranchId();
+    const assessType = $("scheduleAssessmentFilter")?.value || "";
+
+    const query = new URLSearchParams();
+    if (branchId) query.set("branch_id", String(branchId));
+    if (assessType) query.set("assessment_name", assessType);
+
+    body.innerHTML = '<tr><td colspan="8" class="empty-cell">Loading branch exam dates…</td></tr>';
+
+    try {
+        const data = await apiRequest(`/api/attendance/exam-schedule?${query.toString()}`);
+        const rows = data.schedule || [];
+
+        if (!rows.length) {
+            body.innerHTML = '<tr><td colspan="8" class="empty-cell">No exam schedule entries found.</td></tr>';
+            return;
+        }
+
+        body.innerHTML = rows.map((r) => `
+            <tr>
+                <td><strong>${escapeHtml(r.branch_code)}</strong></td>
+                <td>Sem ${escapeHtml(r.semester)}</td>
+                <td><strong>${escapeHtml(r.subject_code)}</strong></td>
+                <td>${escapeHtml(r.subject_name)}</td>
+                <td>${escapeHtml(r.assessment_name)}</td>
+                <td>${formatNumber(r.max_marks)}</td>
+                <td>
+                    <input type="date" class="schedule-date-input"
+                        data-assessment-id="${r.assessment_id}"
+                        value="${escapeHtml(r.exam_date || "2026-08-10")}">
+                </td>
+                <td>
+                    <button type="button" class="secondary-button jump-exam-date-btn"
+                        data-date="${escapeHtml(r.exam_date || "2026-08-10")}">
+                        Open Roll Call →
+                    </button>
+                </td>
+            </tr>
+        `).join("");
+
+        body.querySelectorAll(".schedule-date-input").forEach((inp) => {
+            inp.addEventListener("change", async () => {
+                const aid = Number(inp.dataset.assessmentId);
+                const newDt = inp.value;
+                if (!aid || !newDt) return;
+                try {
+                    const res = await apiRequest("/api/attendance/exam-schedule", {
+                        method: "POST",
+                        body: JSON.stringify({ assessment_id: aid, exam_date: newDt })
+                    });
+                    setMessage("examScheduleMessage", res.message || "Exam date updated.", "success");
+                    loadDailyAttendanceRoster();
+                    loadExamAbsenceVerification();
+                } catch (err) {
+                    setMessage("examScheduleMessage", err.message, "error");
+                }
+            });
+        });
+
+        body.querySelectorAll(".jump-exam-date-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const dt = btn.dataset.date;
+                if ($("dailyAttendanceDate")) {
+                    $("dailyAttendanceDate").value = dt;
+                    loadDailyAttendanceRoster();
+                    $("dailyAttendanceDate").scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+            });
+        });
+    } catch (error) {
+        body.innerHTML = `<tr><td colspan="8" class="empty-cell">${escapeHtml(error.message)}</td></tr>`;
+    }
+}
+
+let examVerificationRecordsCache = [];
+
+function renderExamVerificationTable() {
+    const body = $("examVerificationBody");
+    if (!body) return;
+
+    const pageRows = paginateRows("examVerificationBody", examVerificationRecordsCache, renderExamVerificationTable);
+
+    if (!examVerificationRecordsCache.length) {
+        body.innerHTML = '<tr><td colspan="9" class="empty-cell">All students attempted their exams in this scope!</td></tr>';
+        return;
+    }
+
+    body.innerHTML = pageRows.map((r) => {
+        const attDay = r.attendance_on_exam_day;
+        const lvStatus = r.leave_status || "NONE";
+        const lvCat = r.leave_category;
+
+        const attBadge = lvStatus === "APPROVED"
+            ? `<span class="credit-badge partial">PRESENT (${escapeHtml(lvCat)} · 0.6/1)</span>`
+            : attDay === "ABSENT"
+            ? '<span class="result-pill fail">ABSENT (0/1)</span>'
+            : attDay === "PRESENT"
+            ? '<span class="result-pill incomplete">PRESENT (1/1)</span>'
+            : '<span class="muted">UNMARKED</span>';
+
+        const verdictBadge = lvStatus === "APPROVED"
+            ? `<span class="attendance-badge attendance-active">✓ Approved ${escapeHtml(lvCat)} (60% Credit)</span>`
+            : attDay === "ABSENT"
+            ? '<span class="attendance-badge attendance-active">✓ Verified Absent on Exam Day</span>'
+            : attDay === "PRESENT"
+            ? '<span class="attendance-badge attendance-inactive">! Present on Campus · Skipped Exam</span>'
+            : '<span class="attendance-badge attendance-warning">Pending Daily Roll Call</span>';
+
+        return `
+            <tr>
+                <td><strong>${escapeHtml(r.roll_no)}</strong></td>
+                <td>${escapeHtml(r.student_name)}</td>
+                <td>${escapeHtml(r.branch_code)}</td>
+                <td>${escapeHtml(r.subject_code)}</td>
+                <td><strong>${escapeHtml(r.assessment_name)}</strong></td>
+                <td>${escapeHtml(r.exam_date || "—")}</td>
+                <td>${attBadge}</td>
+                <td>${verdictBadge}</td>
+                <td>
+                    <button type="button" class="secondary-button verify-mark-absent-btn"
+                        data-student-id="${r.student_id}"
+                        data-exam-date="${escapeHtml(r.exam_date || "2026-08-10")}">
+                        Mark Absent on ${escapeHtml(r.exam_date || "Exam Day")}
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join("");
+
+    body.querySelectorAll(".verify-mark-absent-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+            const sid = Number(btn.dataset.studentId);
+            const dt = btn.dataset.examDate;
+            try {
+                await apiRequest("/api/attendance/daily", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        attendance_date: dt,
+                        records: [{ student_id: sid, attendance_status: "ABSENT", attendance_credit: 0.0 }]
+                    })
+                });
+                await loadExamAbsenceVerification();
+                if ($("dailyAttendanceDate")?.value === dt) {
+                    loadDailyAttendanceRoster();
+                }
+            } catch (err) {
+                setMessage("attendanceMessage", err.message, "error");
+            }
+        });
+    });
+}
+
+async function loadExamAbsenceVerification() {
+    const body = $("examVerificationBody");
+    if (!body) return;
+    const branchId = getSelectedBranchId();
+    const assessName = $("verifyAssessmentFilter")?.value || "";
+
+    const query = new URLSearchParams();
+    if (branchId) query.set("branch_id", String(branchId));
+    if (assessName) query.set("assessment_name", assessName);
+
+    try {
+        const data = await apiRequest(`/api/attendance/exam-verification?${query.toString()}`);
+        const summary = data.summary || {};
+        examVerificationRecordsCache = data.records || [];
+
+        if ($("verifyTotalCount")) $("verifyTotalCount").textContent = summary.total_unattempted ?? 0;
+        if ($("verifyAbsentCount")) $("verifyAbsentCount").textContent = summary.verified_absent ?? 0;
+        if ($("verifyAnomalyCount")) $("verifyAnomalyCount").textContent = summary.present_skipped_anomaly ?? 0;
+
+        resetTablePage("examVerificationBody");
+        renderExamVerificationTable();
+    } catch (error) {
+        body.innerHTML = `<tr><td colspan="9" class="empty-cell">${escapeHtml(error.message)}</td></tr>`;
+    }
+}
+
+$("loadDailyRosterBtn")?.addEventListener("click", loadDailyAttendanceRoster);
+$("dailyAttendanceDate")?.addEventListener("change", loadDailyAttendanceRoster);
+$("dailyRosterSearch")?.addEventListener("input", renderDailyRosterTable);
+
+// Sync the Exclusive Category Filter Dropdown and Filter Pills
+$("dailyLeaveCategoryFilter")?.addEventListener("change", () => {
+    const val = $("dailyLeaveCategoryFilter").value;
+    document.querySelectorAll(".leave-filter-pill").forEach((pill) => {
+        pill.classList.toggle("active", pill.dataset.leaveFilter === val);
+    });
+    renderDailyRosterTable();
+});
+
+document.querySelectorAll(".leave-filter-pill").forEach((pill) => {
+    pill.addEventListener("click", () => {
+        const val = pill.dataset.leaveFilter || "";
+        if ($("dailyLeaveCategoryFilter")) {
+            $("dailyLeaveCategoryFilter").value = val;
+        }
+        document.querySelectorAll(".leave-filter-pill").forEach((p) => {
+            p.classList.toggle("active", p.dataset.leaveFilter === val);
+        });
+        renderDailyRosterTable();
+    });
+});
+
+$("markAllPresentBtn")?.addEventListener("click", () => bulkMarkDailyRoster("PRESENT"));
+$("markAllAbsentBtn")?.addEventListener("click", () => bulkMarkDailyRoster("ABSENT"));
+$("saveDailyRosterBtn")?.addEventListener("click", () => saveEntireDailyRoster());
+
+document.querySelectorAll(".exam-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+        if ($("dailyAttendanceDate")) {
+            $("dailyAttendanceDate").value = chip.dataset.date;
+            loadDailyAttendanceRoster();
+        }
+    });
+});
+
+$("toggleExamScheduleBtn")?.addEventListener("click", () => {
+    const panel = $("examSchedulePanel");
+    if (!panel) return;
+    panel.classList.toggle("hidden");
+    if (!panel.classList.contains("hidden")) {
+        loadBranchExamSchedule();
+    }
+});
+$("closeExamScheduleBtn")?.addEventListener("click", () => {
+    $("examSchedulePanel")?.classList.add("hidden");
+});
+$("scheduleAssessmentFilter")?.addEventListener("change", loadBranchExamSchedule);
+$("verifyAssessmentFilter")?.addEventListener("change", loadExamAbsenceVerification);
+
+$("exportExcelReportBtn")?.addEventListener("click", async () => {
+    await resolveApiBaseUrl();
+    const branchId = getSelectedBranchId();
+    const dateStr = $("dailyAttendanceDate")?.value || "2026-08-10";
+    const query = new URLSearchParams({ date: dateStr });
+    if (branchId) query.set("branch_id", String(branchId));
+    window.open(`${API_BASE_URL}/api/attendance/export-excel?${query.toString()}`, "_blank");
+});
 
 restoreSession();
